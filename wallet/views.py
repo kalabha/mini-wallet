@@ -4,9 +4,6 @@ from django.utils import timezone
 from rest_framework import status
 from rest_framework.authentication import TokenAuthentication
 from rest_framework.authtoken.models import Token
-from rest_framework.decorators import (
-    api_view,
-)
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.views import APIView
 
@@ -62,23 +59,23 @@ class WalletApiView(APIView):
         return response(SUCCESS, wallet_serializer.data, status.HTTP_200_OK)
 
 
-@api_view(["POST"])
-@transaction.atomic
-def init_wallet(request):
-    serializer = WalletInitSerializer(data=request.data)
-    if serializer.is_valid():
-        user = User.objects.create_user(
-            username=serializer.validated_data["customer_xid"]
-        )
-        token, created = Token.objects.get_or_create(user=user)
-        wallet_user = WalletUser.objects.create(
-            user=user, customer_xid=serializer.validated_data["customer_xid"]
-        )
-        Wallet.objects.create(
-            owned_by=wallet_user, status=True, enabled_at=timezone.now(), balance=0.0
-        )
-        return response(SUCCESS, {"token": token.key}, status.HTTP_201_CREATED)
-    return response(FAILED, serializer.errors, status.HTTP_400_BAD_REQUEST)
+class InitializeWalletApiView(APIView):
+    @transaction.atomic
+    def post(self, request):
+        serializer = WalletInitSerializer(data=request.data)
+        if serializer.is_valid():
+            user = User.objects.create_user(
+                username=serializer.validated_data["customer_xid"]
+            )
+            token, created = Token.objects.get_or_create(user=user)
+            wallet_user = WalletUser.objects.create(
+                user=user, customer_xid=serializer.validated_data["customer_xid"]
+            )
+            Wallet.objects.create(
+                owned_by=wallet_user, status=True, enabled_at=timezone.now(), balance=0.0
+            )
+            return response(SUCCESS, {"token": token.key}, status.HTTP_201_CREATED)
+        return response(FAILED, serializer.errors, status.HTTP_400_BAD_REQUEST)
 
 
 class DepositApiView(APIView):
