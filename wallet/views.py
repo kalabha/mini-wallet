@@ -1,15 +1,11 @@
 from django.contrib.auth.models import User
 from django.db import transaction
-
-# Create your views here.
 from django.utils import timezone
 from rest_framework import status
 from rest_framework.authentication import TokenAuthentication
 from rest_framework.authtoken.models import Token
 from rest_framework.decorators import (
     api_view,
-    permission_classes,
-    authentication_classes,
 )
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.views import APIView
@@ -85,51 +81,53 @@ def init_wallet(request):
     return response(FAILED, serializer.errors, status.HTTP_400_BAD_REQUEST)
 
 
-@api_view(["POST"])
-@transaction.atomic
-@authentication_classes([TokenAuthentication])
-@permission_classes([IsAuthenticated])
-def deposit(request):
-    serializer = WalletTransaction(data=request.data)
-    if serializer.is_valid():
-        wallet = Wallet.objects.select_for_update().get(owned_by__user=request.user)
-        if wallet.status:
-            deposit_trx = Deposit.objects.create(
-                deposited_by=wallet.owned_by, status=True, **serializer.validated_data
-            )
-            wallet.balance += deposit_trx.amount
-            wallet.save()
-            return response(
-                SUCCESS,
-                DepositSerializer(instance=deposit_trx).data,
-                status.HTTP_201_CREATED,
-            )
-        return response(FAILED, {"error": "disabled"}, status.HTTP_404_NOT_FOUND)
-    return response(FAILED, {"errors": serializer.errors}, status.HTTP_400_BAD_REQUEST)
+class Deposit(APIView):
+    authentication_classes = (TokenAuthentication,)
+    permission_classes = (IsAuthenticated,)
 
-
-@api_view(["POST"])
-@transaction.atomic
-@authentication_classes([TokenAuthentication])
-@permission_classes([IsAuthenticated])
-def withdraw(request):
-    serializer = WalletTransaction(data=request.data)
-    if serializer.is_valid():
-        wallet = Wallet.objects.select_for_update().get(owned_by__user=request.user)
-        if wallet.status:
-            if wallet.balance < serializer.validated_data["amount"]:
-                return response(
-                    FAILED, {"error": "not enough balance"}, status.HTTP_204_NO_CONTENT
+    @transaction.atomic
+    def post(self, request):
+        serializer = WalletTransaction(data=request.data)
+        if serializer.is_valid():
+            wallet = Wallet.objects.select_for_update().get(owned_by__user=request.user)
+            if wallet.status:
+                deposit_trx = Deposit.objects.create(
+                    deposited_by=wallet.owned_by, status=True, **serializer.validated_data
                 )
-            withdraw_trx = Withdrawal.objects.create(
-                withdrawn_by=wallet.owned_by, status=True, **serializer.validated_data
-            )
-            wallet.balance -= withdraw_trx.amount
-            wallet.save()
-            return response(
-                SUCCESS,
-                WithdrawalSerializer(instance=withdraw_trx).data,
-                status.HTTP_201_CREATED,
-            )
-        return response(FAILED, {"error": "disabled"}, status.HTTP_404_NOT_FOUND)
-    return response(FAILED, {"errors": serializer.errors}, status.HTTP_400_BAD_REQUEST)
+                wallet.balance += deposit_trx.amount
+                wallet.save()
+                return response(
+                    SUCCESS,
+                    DepositSerializer(instance=deposit_trx).data,
+                    status.HTTP_201_CREATED,
+                )
+            return response(FAILED, {"error": "disabled"}, status.HTTP_404_NOT_FOUND)
+        return response(FAILED, {"errors": serializer.errors}, status.HTTP_400_BAD_REQUEST)
+
+
+class Withdraw(APIView):
+    authentication_classes = (TokenAuthentication,)
+    permission_classes = (IsAuthenticated,)
+
+    @transaction.atomic
+    def post(self, request):
+        serializer = WalletTransaction(data=request.data)
+        if serializer.is_valid():
+            wallet = Wallet.objects.select_for_update().get(owned_by__user=request.user)
+            if wallet.status:
+                if wallet.balance < serializer.validated_data["amount"]:
+                    return response(
+                        FAILED, {"error": "not enough balance"}, status.HTTP_204_NO_CONTENT
+                    )
+                withdraw_trx = Withdrawal.objects.create(
+                    withdrawn_by=wallet.owned_by, status=True, **serializer.validated_data
+                )
+                wallet.balance -= withdraw_trx.amount
+                wallet.save()
+                return response(
+                    SUCCESS,
+                    WithdrawalSerializer(instance=withdraw_trx).data,
+                    status.HTTP_201_CREATED,
+                )
+            return response(FAILED, {"error": "disabled"}, status.HTTP_404_NOT_FOUND)
+        return response(FAILED, {"errors": serializer.errors}, status.HTTP_400_BAD_REQUEST)
