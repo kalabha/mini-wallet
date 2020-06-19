@@ -25,7 +25,7 @@ class Wallet(BaseModel):
     )
     status = models.BooleanField(default=False)
     enabled_at = models.DateTimeField()
-    disabled_at = models.DateTimeField()
+    disabled_at = models.DateTimeField(null=True)
     balance = models.FloatField()
 
 
