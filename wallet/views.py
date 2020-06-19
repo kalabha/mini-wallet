@@ -48,7 +48,7 @@ class WalletApiView(APIView):
         if not serializer.validated_data["is_disabled"]:
             return response(
                 FAILED,
-                {"error": "is_disabled should be false"},
+                {"error": "is_disabled should be true"},
                 status.HTTP_400_BAD_REQUEST,
             )
         wallet = Wallet.objects.get(owned_by__user=request.user)

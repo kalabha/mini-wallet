@@ -10,6 +10,7 @@ class BaseModel(models.Model):
     class Meta:
         abstract = True
 
+
 class WalletUser(models.Model):
     customer_xid = models.UUIDField(primary_key=True, editable=False)
     user = models.OneToOneField(
