@@ -81,7 +81,7 @@ def init_wallet(request):
     return response(FAILED, serializer.errors, status.HTTP_400_BAD_REQUEST)
 
 
-class Deposit(APIView):
+class DepositApiView(APIView):
     authentication_classes = (TokenAuthentication,)
     permission_classes = (IsAuthenticated,)
 
@@ -105,7 +105,7 @@ class Deposit(APIView):
         return response(FAILED, {"errors": serializer.errors}, status.HTTP_400_BAD_REQUEST)
 
 
-class Withdraw(APIView):
+class WithdrawApiView(APIView):
     authentication_classes = (TokenAuthentication,)
     permission_classes = (IsAuthenticated,)
 
